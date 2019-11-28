@@ -6,12 +6,10 @@
 #include <eosiolib/asset.hpp>
 
 #define KEY_SYMBOL S(0,KEY)
-#define STAKE_SYMBOL S(0,STKEY)
+#define STAKE_SYMBOL S(0,SKEY)
+#define KEYCORE_SYMBOL S(4,KEYCORE)
 
-#define KEY_INIT_SUPPLY 1000000
-
-#define TIME_WINDOW_FOR_VOTE ((uint64_t)(30*24*3600))
-#define TIME_WINDOW_FOR_OBSERVATION ((uint64_t)(6*30*24*3600))
+#define KEY_INIT_SUPPLY 100000000000000
 
 using namespace eosio;
 using std::string;
@@ -37,7 +35,7 @@ class medishares: public eosio::contract{
     {}
 
     ///@abi action
-    void init(const uint64_t guarantee_rate, const uint64_t ref_rate, asset max_claim);
+    void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote);
 
     ///@abi action
     void transfer(account_name from, account_name to, asset quantity, string memo);
@@ -52,7 +50,7 @@ class medishares: public eosio::contract{
     void unstakekey(account_name account, asset key_quantity);
 
     ///@abi action
-    void propose(account_name proposer, name case_name, asset required_fund);
+    void propose(account_name proposer, checksum256 case_digest, asset required_fund);
 
     ///@abi action
     void approve(account_name account, uint64_t case_id);
@@ -100,7 +98,7 @@ class medishares: public eosio::contract{
     eosio::multi_index<N(keymarket), keymarket> keymarket;
 
     struct asset_entry{
-        asset    balance;          //KEY:可用数KEY数，STKEY:冻结KEY数，EOS:保障余额
+        asset    balance;          //KEY:可用数KEY数，SKEY:冻结KEY数，EOS:保障余额
 
         friend bool operator == ( const asset_entry& a, const asset_entry& b ) {
             return a.balance.symbol.name() == b.balance.symbol.name();
@@ -124,12 +122,13 @@ class medishares: public eosio::contract{
     struct accounts {
         account_name    account;          //账户名
         time            join_time = 0;    //加入互助保障时间
+        time            latest_apply_time = 0;    //最近申请互助时间
         vector<asset_entry> asset_list;   //资产列表
         vector<vote_entry> vote_list;     //投票列表
 
         uint64_t primary_key()const {return account;}
 
-        EOSLIB_SERIALIZE(accounts, (account)(join_time)(asset_list)(vote_list));
+        EOSLIB_SERIALIZE(accounts, (account)(join_time)(latest_apply_time)(asset_list)(vote_list));
     };
 
     eosio::multi_index<N(accounts), accounts> accounts;
@@ -145,25 +144,40 @@ class medishares: public eosio::contract{
         uint64_t     applied_cases;   //申请成功的项目数
         uint64_t     guaranteed_accounts;  //当前受保用户总数
         asset        max_claim;       //单个互助项目可申请的最大token数量
+        time         min_apply_interval;   //申请互助的最小时间间隔
+        time         time_for_vote;   //投票时间窗口
+        time         time_for_observation; //观察期
+        time         time_for_announcement;//公示期
+        asset        total_key;       //全局key数
+        asset        total_skey;      //全局skey数
+        asset        tatal_donate;    //已互助总金额
 
         auto primary_key()const{return 0;}
-        EOSLIB_SERIALIZE(global, (ref_rate)(guarantee_rate)(guarantee_pool)(bonus_pool)(cases_num)(applied_cases)(guaranteed_accounts)(max_claim))
+        EOSLIB_SERIALIZE(global, (ref_rate)(guarantee_rate)(guarantee_pool)(bonus_pool)(cases_num)(applied_cases)(guaranteed_accounts)(max_claim)(min_apply_interval)(time_for_vote)(time_for_observation)(time_for_announcement)(total_key)(total_skey)(tatal_donate))
     };
     eosio::multi_index<N(global), global> global;
+
+    struct aid_entry{
+        account_name account;      //互助账号
+        asset        aid_quantity; //互助金额
+    };
 
     ///@abi table
     struct cases
     {
         uint64_t        case_id;        //互助项目编号
-        name            case_name;      //项目名
+        checksum256     case_digest;    //项目hash
         account_name    proposer;       //互助申请账号
         asset           required_fund;  //请求的资助金额
         time            start_time;     //开始时间
-        asset           vote_yes;       //投赞成的STKEY数
-	asset           vote_no;        //投反对的STKEY数
+        time            exec_time;      //互助划款时间
+        asset           vote_yes;       //投赞成的SKEY数
+	asset           vote_no;        //投反对的SKEY数
+        asset           transfer_fund;  //实际划款金额
+        vector<aid_entry> aid_list;     //均摊列表
 	
         auto primary_key()const{return case_id;}
-        EOSLIB_SERIALIZE(cases, (case_id)(case_name)(proposer)(required_fund)(start_time)(vote_yes)(vote_no))
+        EOSLIB_SERIALIZE(cases, (case_id)(case_digest)(proposer)(required_fund)(start_time)(exec_time)(vote_yes)(vote_no)(transfer_fund)(aid_list))
     };
     eosio::multi_index<N(cases), cases> cases;
 };
