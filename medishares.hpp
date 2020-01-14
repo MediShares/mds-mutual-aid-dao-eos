@@ -9,6 +9,8 @@
 #define STAKE_SYMBOL S(0,SKEY)
 #define KEYCORE_SYMBOL S(4,KEYCORE)
 
+#define EOS_SYMBOL S(4,EOS)
+
 #define KEY_INIT_SUPPLY 100000000000000
 
 using namespace eosio;
@@ -70,7 +72,7 @@ class medishares: public eosio::contract{
     inline asset get_balance(account_name owner, symbol_name sym)const;
 
     void handleTransfer(const account_name from, const account_name to, const asset& quantity, string memo);
-	
+
   private:
     ///@abi table
     struct keymarket {
@@ -172,10 +174,10 @@ class medishares: public eosio::contract{
         time            start_time;     //开始时间
         time            exec_time;      //互助划款时间
         asset           vote_yes;       //投赞成的SKEY数
-	asset           vote_no;        //投反对的SKEY数
+    asset           vote_no;        //投反对的SKEY数
         asset           transfer_fund;  //实际划款金额
         vector<aid_entry> aid_list;     //均摊列表
-	
+
         auto primary_key()const{return case_id;}
         EOSLIB_SERIALIZE(cases, (case_id)(case_digest)(proposer)(required_fund)(start_time)(exec_time)(vote_yes)(vote_no)(transfer_fund)(aid_list))
     };
@@ -187,9 +189,9 @@ extern "C"
     void apply(uint64_t receiver, uint64_t code, uint64_t action)
     {
         auto self = receiver;
-        if( action == N(onerror)) { 
-            /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ 
-            eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); 
+        if( action == N(onerror)) {
+            /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */
+            eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account");
         }
 
         medishares thiscontract(self);
@@ -204,7 +206,7 @@ extern "C"
         {   //receive message from eosio.token::transfer
             auto transferData = unpack_action_data<transfer_args>();
             if (transferData.to == self && transferData.from != N(eosio.ram) && transferData.from != N(eosio.stake))
-            {    
+            {
                 thiscontract.handleTransfer(transferData.from, transferData.to, transferData.quantity, transferData.memo);
             }
         }

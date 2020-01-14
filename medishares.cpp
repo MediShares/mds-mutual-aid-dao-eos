@@ -72,7 +72,7 @@ void medishares::init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_clai
     eosio_assert(ref_rate > 0 && guarantee_rate > 0, "must positive rate");
     eosio_assert((ref_rate + guarantee_rate) < 1000, "invalid parameters");
     eosio_assert(max_claim.amount > 0, "max_claim must be positive");
-    eosio_assert(max_claim.symbol == CORE_SYMBOL, "unsupported symbol");
+    eosio_assert(max_claim.symbol == EOS_SYMBOL, "unsupported symbol");
     eosio_assert(min_apply_interval > 0, "min_apply_interval must be positive");
 
     require_auth(_self);
@@ -86,7 +86,7 @@ void medishares::init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_clai
         k.base.balance.amount = 762305400;
         k.base.balance.symbol = KEY_SYMBOL;
         k.quote.balance.amount = 54580530000;
-        k.quote.balance.symbol = CORE_SYMBOL;
+        k.quote.balance.symbol = EOS_SYMBOL;
     });
 
     auto glb = global.begin();
@@ -94,8 +94,8 @@ void medishares::init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_clai
     glb = global.emplace(_self, [&](auto& gl){
         gl.ref_rate = ref_rate;
         gl.guarantee_rate = guarantee_rate;
-        gl.guarantee_pool = asset(0, CORE_SYMBOL);
-        gl.bonus_pool = asset(0, CORE_SYMBOL);
+        gl.guarantee_pool = asset(0, EOS_SYMBOL);
+        gl.bonus_pool = asset(0, EOS_SYMBOL);
         gl.cases_num = 0;
         gl.applied_cases = 0;
         gl.guaranteed_accounts = 0;
@@ -106,8 +106,8 @@ void medishares::init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_clai
         gl.time_for_announcement = time_for_announcement;
         gl.total_key = asset(0, KEY_SYMBOL);
         gl.total_skey = asset(0, STAKE_SYMBOL);
-        gl.tatal_donate = asset(0, CORE_SYMBOL);
-    }); 
+        gl.tatal_donate = asset(0, EOS_SYMBOL);
+    });
 }
 
 void medishares::handleTransfer(const account_name from, const account_name to, const asset& quantity, string memo)
@@ -115,7 +115,7 @@ void medishares::handleTransfer(const account_name from, const account_name to, 
     if(from == _self || to != _self){
         return;
     }
-    eosio_assert(quantity.symbol == CORE_SYMBOL, "unsupported symbol");
+    eosio_assert(quantity.symbol == EOS_SYMBOL, "unsupported symbol");
     eosio_assert(quantity.amount >= 100, "must greater than 0.01 EOS");
 
     require_auth(from);
@@ -138,7 +138,7 @@ void medishares::handleTransfer(const account_name from, const account_name to, 
         eosio_assert(end_pos != string::npos, "parse memo error");
         eosio_assert(end_pos - separator_pos <= 22 && end_pos - separator_pos > 10, "invalid account name");
         string beneficiary_account_str = memo.substr(separator_pos + 10, end_pos - 1);
-        participator = string_to_name(beneficiary_account_str.c_str()); 
+        participator = string_to_name(beneficiary_account_str.c_str());
         eosio_assert(is_account(participator), "participator account does not exist");
     }
 
@@ -154,7 +154,7 @@ void medishares::handleTransfer(const account_name from, const account_name to, 
 
     auto glb = global.begin();
     eosio_assert(glb != global.end(), "the global table does not exist");
-    
+
     if(referrer != 0){
         ref_amount = (uint64_t)(quantity.amount * glb->ref_rate / 1000);
         eosio_assert(ref_amount > 0, "referral asset too small");
@@ -162,7 +162,7 @@ void medishares::handleTransfer(const account_name from, const account_name to, 
         action(
             permission_level{_self, N(active)},
             N(eosio.token), N(transfer),
-            std::make_tuple(_self, referrer, asset(ref_amount, CORE_SYMBOL), std::string("Referral bonuses"))
+            std::make_tuple(_self, referrer, asset(ref_amount, EOS_SYMBOL), std::string("Referral bonuses"))
         ).send();
     }
 
@@ -171,24 +171,24 @@ void medishares::handleTransfer(const account_name from, const account_name to, 
     uint64_t bonus_amount = pool_amount - guarantee_amount;
     eosio_assert(bonus_amount > 0, "bonus amount abnormity");
 
-    if(!has_balance(participator, asset(guarantee_amount, CORE_SYMBOL))){
+    if(!has_balance(participator, asset(guarantee_amount, EOS_SYMBOL))){
         global.modify(glb, 0, [&](auto& gl){
             gl.guaranteed_accounts += 1;
         });
     }
-    add_balance(participator, asset(guarantee_amount, CORE_SYMBOL), _self);
+    add_balance(participator, asset(guarantee_amount, EOS_SYMBOL), _self);
 
     auto key_out = asset(0, KEY_SYMBOL);
     const auto& market = keymarket.get(KEYCORE_SYMBOL, "key market does not exist");
     keymarket.modify( market, 0, [&]( auto& km ) {
-        key_out = km.convert( asset(bonus_amount, CORE_SYMBOL), KEY_SYMBOL);
+        key_out = km.convert( asset(bonus_amount, EOS_SYMBOL), KEY_SYMBOL);
     });
     eosio_assert( key_out.amount > 0, "can not get any keys in this price, please increase quantity." );
     add_balance(participator, key_out, _self);
 
     global.modify(glb, 0, [&](auto& gl){
-        gl.guarantee_pool = gl.guarantee_pool + asset(guarantee_amount, CORE_SYMBOL);
-        gl.bonus_pool = gl.bonus_pool + asset(bonus_amount, CORE_SYMBOL);
+        gl.guarantee_pool = gl.guarantee_pool + asset(guarantee_amount, EOS_SYMBOL);
+        gl.bonus_pool = gl.bonus_pool + asset(bonus_amount, EOS_SYMBOL);
         gl.total_key = gl.total_key + key_out;
     });
 }
@@ -201,7 +201,7 @@ void medishares::sellkey(account_name account, asset key_quantity){
 
     asset tokens_out;
     keymarket.modify(market, 0, [&](auto& km){
-        tokens_out = km.convert(key_quantity, CORE_SYMBOL);
+        tokens_out = km.convert(key_quantity, EOS_SYMBOL);
     });
     eosio_assert(tokens_out.amount > 0, "token amount too small to transfer");
     action(
@@ -296,17 +296,17 @@ void medishares::add_balance(account_name owner, asset value, account_name ram_p
         accounts_itr = accounts.emplace(ram_payer, [&](auto& a){
             a.account = owner;
             a.asset_list.push_back(asset_e);
-            if(value.symbol == CORE_SYMBOL){
+            if(value.symbol == EOS_SYMBOL){
                 a.join_time = now();
             }
             a.latest_apply_time = 0;
         });
     } else {
         auto list_itr = std::find(accounts_itr->asset_list.begin(), accounts_itr->asset_list.end(), asset_e);
-	if(list_itr == accounts_itr->asset_list.end()){
+    if(list_itr == accounts_itr->asset_list.end()){
             accounts.modify(accounts_itr, ram_payer, [&](auto& a){
                 a.asset_list.push_back(asset_e);
-                if(value.symbol == CORE_SYMBOL){
+                if(value.symbol == EOS_SYMBOL){
                     a.join_time = now();
                 }
             });
@@ -348,7 +348,7 @@ void medishares::stakekey(account_name account, asset key_quantity){
         if(case_itr == cases.end()){
             accounts.modify(accounts_itr, account, [&]( auto& v){
                 v.vote_list.erase(list_itr);
-            });        
+            });
         }else{
             if(case_itr->start_time + glb->time_for_vote < now()){
                 continue;
@@ -401,7 +401,7 @@ void medishares::unstakekey(account_name account, asset key_quantity){
                     cases.modify(case_itr, account, [&]( auto& c){
                         c.vote_yes -= asset(key_quantity.amount, STAKE_SYMBOL);
                     });
-                }else{  
+                }else{
                     cases.modify(case_itr, account, [&]( auto& c){
                         c.vote_no -= asset(key_quantity.amount, STAKE_SYMBOL);
                     });
@@ -425,7 +425,7 @@ bool my_memcmp( void *s1, void *s2, uint32_t n ){
 void medishares::propose(account_name proposer, checksum256 case_digest, asset required_fund){
     require_auth(proposer);
     eosio_assert(required_fund.amount > 0, "required_fund cannot be negative");
-    eosio_assert(required_fund.symbol == CORE_SYMBOL, "this asset is not supported or the symbol precision mismatch");
+    eosio_assert(required_fund.symbol == EOS_SYMBOL, "this asset is not supported or the symbol precision mismatch");
 
     auto glb = global.begin();
     eosio_assert(glb != global.end(), "the global table does not exist");
@@ -437,7 +437,7 @@ void medishares::propose(account_name proposer, checksum256 case_digest, asset r
     });
 
     const auto& accounts_itr = accounts.get(proposer, "the user does not exist");
-    eosio_assert(has_balance(proposer, asset(0, CORE_SYMBOL)), "the user do not have guarantee balance");
+    eosio_assert(has_balance(proposer, asset(0, EOS_SYMBOL)), "the user do not have guarantee balance");
     eosio_assert(accounts_itr.join_time + glb->time_for_observation <= now(), "can not propose in observation period");
     eosio_assert(accounts_itr.latest_apply_time + glb->min_apply_interval <= now(), "the interval for apply must bigger then min_apply_interval");
 
@@ -456,7 +456,7 @@ void medishares::propose(account_name proposer, checksum256 case_digest, asset r
         c.exec_time = 0;
         c.vote_yes = asset(0, STAKE_SYMBOL);
         c.vote_no = asset(0, STAKE_SYMBOL);
-        c.transfer_fund = asset(0, CORE_SYMBOL);
+        c.transfer_fund = asset(0, EOS_SYMBOL);
     });
 
     accounts.modify(accounts_itr, proposer, [&](auto& a){
@@ -534,8 +534,8 @@ void medishares::unapprove(account_name account, uint64_t case_id){
         });
         cases.modify(case_itr, account, [&](auto& c){
             c.vote_no += asset_list_itr->balance;
-        }); 
-    }   
+        });
+    }
 }
 
 void medishares::cancelvote(account_name account, uint64_t case_id){
@@ -625,7 +625,7 @@ void medishares::execproposal(account_name account, uint64_t case_id){
     eosio_assert(single_amount >= 1, "too little to transfer");
 
     asset_entry asset_e;
-    asset_e.balance = asset(single_amount, CORE_SYMBOL);
+    asset_e.balance = asset(single_amount, EOS_SYMBOL);
     aid_entry aid_e;
     uint64_t transfer_amount = 0;
     for(auto accounts_itr = accounts.begin(); accounts_itr != accounts.end(); ){
@@ -680,7 +680,7 @@ void medishares::execproposal(account_name account, uint64_t case_id){
     action(
         permission_level{_self, N(active)},
         N(eosio.token), N(transfer),
-        std::make_tuple(_self, case_itr->proposer, asset(transfer_amount, CORE_SYMBOL), memo)
+        std::make_tuple(_self, case_itr->proposer, asset(transfer_amount, EOS_SYMBOL), memo)
     ).send();
 
     global.modify(glb, 0, [&](auto& gl){
@@ -691,7 +691,7 @@ void medishares::execproposal(account_name account, uint64_t case_id){
 
     cases.modify(case_itr, account, [&]( auto& c){
         c.exec_time = now();
-        c.transfer_fund = asset(transfer_amount, CORE_SYMBOL);
+        c.transfer_fund = asset(transfer_amount, EOS_SYMBOL);
     });
 }
 
