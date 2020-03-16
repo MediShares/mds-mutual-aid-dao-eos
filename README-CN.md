@@ -21,6 +21,7 @@ time_for_announcement  | 公示期时间长度，申请成功的项目自动进�
 total_key  | KEY的总数
 total_skey  | SKEY的总数
 tatal_donate  | 已互助的总金额
+rule_hash  | 互助项目规则的IPFS哈希
 
 ### accounts表
 accounts表存储用户账户信息、资产和投票列表：
@@ -56,7 +57,7 @@ keymarket表存储进入治理池中的金额兑换KEY的bancor参数。
 ### init
 init操作执行合约初始化，定义MutualDAO互助计划的一些基本参数，函数声明如下：
 
-`void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote);`
+`void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote, string rule_hash);`
 
 参数说明：
 
@@ -72,7 +73,9 @@ time_for_announcement：公示期时间长度；
 
 &emsp;  &emsp;min_apply_interval：多次申请互助的申请最小时间间隔；
 
-&emsp;  &emsp;  &emsp;  time_for_vote：投票窗口期长度
+&emsp;  &emsp;  &emsp;  time_for_vote：投票窗口期长度；
+
+&emsp;  &emsp;  &emsp;  &emsp;  rule_hash：互助项目规则的IPFS哈希
 
 ### transfer
 需要对KEY进行转账时（保障余额和SKEY无法转账），执行该操作，函数声明：

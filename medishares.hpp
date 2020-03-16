@@ -9,7 +9,8 @@
 #define STAKE_SYMBOL S(0,SKEY)
 #define KEYCORE_SYMBOL S(4,KEYCORE)
 
-#define EOS_SYMBOL S(4,EOS)
+#define TOKEN_SYMBOL S(4,EMDS)
+#define TOKEN_CONTRACT N(medisharesbp)
 
 #define KEY_INIT_SUPPLY 100000000000000
 
@@ -37,7 +38,7 @@ class medishares: public eosio::contract{
     {}
 
     ///@abi action
-    void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote);
+    void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote, string rule_hash);
 
     ///@abi action
     void transfer(account_name from, account_name to, asset quantity, string memo);
@@ -68,6 +69,9 @@ class medishares: public eosio::contract{
 
     ///@abi action
     void delproposal(account_name account, uint64_t case_id);
+
+    ///@abi action
+    void updaterule(string rule_hash);
 
     inline asset get_balance(account_name owner, symbol_name sym)const;
 
@@ -153,9 +157,10 @@ class medishares: public eosio::contract{
         asset        total_key;       //全局key数
         asset        total_skey;      //全局skey数
         asset        tatal_donate;    //已互助总金额
+        string       rule_hash;       //互助参与规则的IPFS Hash
 
         auto primary_key()const{return 0;}
-        EOSLIB_SERIALIZE(global, (ref_rate)(guarantee_rate)(guarantee_pool)(bonus_pool)(cases_num)(applied_cases)(guaranteed_accounts)(max_claim)(min_apply_interval)(time_for_vote)(time_for_observation)(time_for_announcement)(total_key)(total_skey)(tatal_donate))
+        EOSLIB_SERIALIZE(global, (ref_rate)(guarantee_rate)(guarantee_pool)(bonus_pool)(cases_num)(applied_cases)(guaranteed_accounts)(max_claim)(min_apply_interval)(time_for_vote)(time_for_observation)(time_for_announcement)(total_key)(total_skey)(tatal_donate)(rule_hash))
     };
     eosio::multi_index<N(global), global> global;
 
@@ -182,6 +187,8 @@ class medishares: public eosio::contract{
         EOSLIB_SERIALIZE(cases, (case_id)(case_digest)(proposer)(required_fund)(start_time)(exec_time)(vote_yes)(vote_no)(transfer_fund)(aid_list))
     };
     eosio::multi_index<N(cases), cases> cases;
+
+    //void handleTransfer(const account_name from, const account_name to, const asset& quantity, string memo);
 };
 
 extern "C"
@@ -199,13 +206,13 @@ extern "C"
         {   // Action is pushed directly to the contract
             switch (action)
             {
-                EOSIO_API(medishares, (init)(transfer)(sellkey)(stakekey)(unstakekey)(propose)(approve)(unapprove)(cancelvote)(execproposal)(delproposal))
+                EOSIO_API(medishares, (init)(transfer)(sellkey)(stakekey)(unstakekey)(propose)(approve)(unapprove)(cancelvote)(execproposal)(delproposal)(updaterule))
             }
         }
-        else if (code == N(eosio.token) && action == N(transfer))
-        {   //receive message from eosio.token::transfer
+        else if (code == TOKEN_CONTRACT && action == N(transfer))
+        {   //receive message from medisharesbp::transfer
             auto transferData = unpack_action_data<transfer_args>();
-            if (transferData.to == self && transferData.from != N(eosio.ram) && transferData.from != N(eosio.stake))
+            if (transferData.to == self)
             {
                 thiscontract.handleTransfer(transferData.from, transferData.to, transferData.quantity, transferData.memo);
             }

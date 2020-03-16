@@ -21,6 +21,7 @@ time_for_announcement  | the period for announcement after the mutual aid event 
 total_key  | total number of KEY
 total_skey  | total number of SKEY
 tatal_donate  | total funding that have been implementated for mutual aid events
+rule_hash  | IPFS hash of mutual aid rules
 
 ### accounts
 the accounts table store account information and their vote events.
@@ -56,7 +57,7 @@ the keymarket table store parameters of bancor which determine the convert rate 
 ### init
 The init operation performs contract initialization, defines some basic parameters of the MutualDAO mutual assistance plan, and the function declaration is as follows:
 
-`void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote);`
+`void init(uint64_t guarantee_rate, uint64_t ref_rate, asset max_claim, time time_for_observation, time time_for_announcement, time min_apply_interval, time time_for_vote, string rule_hash);`
 
 Parameter description:
 
@@ -72,7 +73,9 @@ time_for_announcement : the period for announcement after the mutual aid event b
 
 &emsp;  &emsp;min_apply_interval : the minimum interval between two mutual aid events for one person;
 
-&emsp;  &emsp;  &emsp;  time_for_vote : the period for voting after mutual aid events begin.
+&emsp;  &emsp;  &emsp;  time_for_vote : the period for voting after mutual aid events begin;
+
+&emsp;  &emsp;  &emsp;  &emsp;  rule_hash : IPFS hash of mutual aid rules.
 
 ### transfer
 When the KEY needs to be transferred (the guaranteed balance and SKEY cannot be transferred), perform this operation. Function declaration:
